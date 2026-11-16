@@ -35,6 +35,20 @@ extension VideoPlayer.PlaybackControls.Toolbar.ActionButtons {
             @Bindable
             var playbackItem = playbackItem
 
+            #if os(tvOS)
+            // Avoid nested Picker focus hierarchies within the playback Menu.
+            ForEach(playbackItem.audioStreams, id: \.index) { stream in
+                Button {
+                    playbackItem.selectedAudioStreamIndex = stream.index
+                } label: {
+                    if stream.index == selectedAudioStreamIndex {
+                        Label(stream.displayTitle ?? L10n.unknown, systemImage: "checkmark")
+                    } else {
+                        Text(stream.displayTitle ?? L10n.unknown)
+                    }
+                }
+            }
+            #else
             Picker(selection: $playbackItem.selectedAudioStreamIndex) {
                 ForEach(playbackItem.audioStreams, id: \.index) { stream in
                     Text(stream.displayTitle ?? L10n.unknown)
@@ -47,6 +61,7 @@ extension VideoPlayer.PlaybackControls.Toolbar.ActionButtons {
                     Text(selectedAudioStream.displayTitle ?? L10n.unknown)
                 }
             }
+            #endif
         }
 
         var body: some View {
