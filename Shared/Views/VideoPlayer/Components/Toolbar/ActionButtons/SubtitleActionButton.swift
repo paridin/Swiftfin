@@ -121,7 +121,104 @@ extension VideoPlayer.PlaybackControls.Toolbar.ActionButtons {
             .disabled(streams(secondary: secondary).isEmpty)
         }
 
+        #if os(tvOS)
+        // Direct actions avoid the nested Menu/Picker focus trap on Siri Remote.
+        private func trackOptions(_ title: String, secondary: Bool) -> some View {
+            Section(title) {
+                Button {
+                    if secondary {
+                        playbackItem.setSubtitleTrack(index: -1, secondary: true)
+                    } else {
+                        playbackItem.setSubtitlesEnabled(false)
+                    }
+                } label: {
+                    if secondary ? playbackItem.subtitleTrackIndex(secondary: true) == -1 : !playbackItem.subtitlesEnabled {
+                        Label(L10n.none, systemImage: "checkmark")
+                    } else {
+                        Text(L10n.none)
+                    }
+                }
+
+                ForEach(streams(secondary: secondary), id: \.index) { stream in
+                    Button {
+                        playbackItem.setSubtitleTrack(index: stream.index ?? -1, secondary: secondary)
+                        if !secondary {
+                            playbackItem.setSubtitlesEnabled(true)
+                        }
+                    } label: {
+                        if playbackItem.subtitleTrackIndex(secondary: secondary) == stream.index
+                            && (secondary || playbackItem.subtitlesEnabled)
+                        {
+                            Label(stream.displayTitle ?? L10n.unknown, systemImage: "checkmark")
+                        } else {
+                            Text(stream.displayTitle ?? L10n.unknown)
+                        }
+                    }
+                }
+            }
+        }
+        #endif
+
         var body: some View {
+            #if os(tvOS)
+            Section(L10n.subtitles) {
+                Button {
+                    playbackItem.setSubtitlesEnabled(true)
+                } label: {
+                    if playbackItem.subtitlesEnabled {
+                        Label(L10n.on, systemImage: "checkmark")
+                    } else {
+                        Text(L10n.on)
+                    }
+                }
+                .disabled(streams(secondary: false).isEmpty)
+
+                Button {
+                    playbackItem.setSubtitlesEnabled(false)
+                } label: {
+                    if !playbackItem.subtitlesEnabled {
+                        Label(L10n.off, systemImage: "checkmark")
+                    } else {
+                        Text(L10n.off)
+                    }
+                }
+            }
+
+            trackOptions(
+                playbackItem.supportsSecondarySubtitles ? L10n.primarySubtitles : L10n.subtitleTrack,
+                secondary: false
+            )
+
+            if playbackItem.supportsSecondarySubtitles {
+                trackOptions(L10n.secondarySubtitles, secondary: true)
+            }
+
+            Section(L10n.textStyle) {
+                Button {
+                    selectedProfileID = ""
+                } label: {
+                    if profileID.wrappedValue.isEmpty {
+                        Label(L10n.system, systemImage: "checkmark")
+                    } else {
+                        Text(L10n.system)
+                    }
+                }
+
+                ForEach(profiles) { profile in
+                    Button {
+                        selectedProfileID = profile.id
+                    } label: {
+                        if profileID.wrappedValue == profile.id {
+                            Label(profile.name, systemImage: "checkmark")
+                        } else {
+                            Text(profile.name)
+                        }
+                    }
+                }
+
+                SystemSettingsButton(title: L10n.captionStyleSettings, destination: .captionStyles)
+            }
+            #else
             Section {
                 Picker(L10n.subtitles, selection: isEnabled) {
                     Button {
@@ -172,6 +269,7 @@ extension VideoPlayer.PlaybackControls.Toolbar.ActionButtons {
                 }
                 .menuOrder(.fixed)
             }
+            #endif
         }
     }
 }
